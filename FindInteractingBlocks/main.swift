@@ -33,7 +33,7 @@ let pipeline = try! device.makeComputePipelineState(function: function)
 
 let numIterations = 5
 for i in 0..<numIterations {
-    let shouldCapture = false//i == numIterations - 1
+    let shouldCapture = i == numIterations - 1
     if shouldCapture {
         let captureManager = MTLCaptureManager.shared()
         let descriptor = MTLCaptureDescriptor()
