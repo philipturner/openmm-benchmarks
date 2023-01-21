@@ -33,7 +33,7 @@ constant float PADDED_CUTOFF_SQUARED = 1;
 // Determine whether simdgroup_matrix helps.
 // Determine whether half precision helps.
 // Determine whether BFloat16 packing helps.
-#define MATRIX_MULTIPLICATION 1
+#define MATRIX_MULTIPLICATION 0
 
 #define GROUP_SIZE 256
 #define BUFFER_SIZE 256
@@ -88,7 +88,7 @@ kernel void findBlocksWithInteractions(
         int x = sortedBlocks[(block1) % 128].y;
         int neighborsInBuffer = 0;
 #if MATRIX_MULTIPLICATION
-        real4 pos1 = posq[(x*TILE_SIZE+indexInWarp) % 128];
+        float4 pos1 = posq[(x*TILE_SIZE+indexInWarp) % 128];
         pos1.w = 0.5f * (pos1.x * pos1.x + pos1.y * pos1.y + pos1.z * pos1.z);
         posBuffer[tg_lane_id] = float4(pos1);
 #else
@@ -117,7 +117,7 @@ kernel void findBlocksWithInteractions(
                 
 #define LOOP_BLOCK(j) \
 {\
-                        float4 posj = (posBuffer[warpStart+j]);\
+                        float4 posj = float4(posBuffer[warpStart+j]);\
                         float halfDist2 = posj.w + pos2.w - posj.x*pos2.x - posj.y*pos2.y - posj.z*pos2.z;\
                         interacts |= (halfDist2 < 0.5f * PADDED_CUTOFF_SQUARED);\
 }\
@@ -174,13 +174,31 @@ LOOP_BLOCK(Q+3) \
                 
                 // Do a prefix sum to compact the list of atoms.
                 
-                int toSum = (interacts ? 1 : 0);
-                int prefixSum = simd_prefix_inclusive_sum(toSum);
-                neighborsInBuffer += simd_broadcast(prefixSum, 31);
+//                int toSum = (interacts ? 1 : 0);
+//                int prefixSum = simd_prefix_inclusive_sum(toSum);
+//                neighborsInBuffer += simd_broadcast(prefixSum, 31);
 
-//                atomCountBuffer[tg_lane_id].x = (interacts ? 1 : 0);
-//                threadgroup_barrier(mem_flags::mem_threadgroup);
-//                int whichBuffer = 0;
+                atomCountBuffer[tg_lane_id].x = (interacts ? 1 : 0);
+                threadgroup_barrier(mem_flags::mem_threadgroup);
+                int whichBuffer = 0;
+#define PREFIX_SUM_BLOCK(offset) \
+                { \
+                    if (whichBuffer == 0) \
+                        atomCountBuffer[tg_lane_id].y = (indexInWarp < offset ? atomCountBuffer[tg_lane_id].x : atomCountBuffer[tg_lane_id].x+atomCountBuffer[tg_lane_id-offset].x); \
+                    else \
+                        atomCountBuffer[tg_lane_id].x = (indexInWarp < offset ? atomCountBuffer[tg_lane_id].y : atomCountBuffer[tg_lane_id].y+atomCountBuffer[tg_lane_id-offset].y); \
+                    whichBuffer = 1-whichBuffer; \
+                    threadgroup_barrier(mem_flags::mem_threadgroup); \
+                } \
+                
+                
+                // 21562 -> 21264
+                PREFIX_SUM_BLOCK(1);
+                PREFIX_SUM_BLOCK(2);
+                PREFIX_SUM_BLOCK(4);
+                PREFIX_SUM_BLOCK(8);
+                PREFIX_SUM_BLOCK(16);
+
 //                for (int offset = 1; offset < TILE_SIZE; offset *= 2) {
 //                    if (whichBuffer == 0)
 //                        atomCountBuffer[tg_lane_id].y = (indexInWarp < offset ? atomCountBuffer[tg_lane_id].x : atomCountBuffer[tg_lane_id].x+atomCountBuffer[tg_lane_id-offset].x);
@@ -189,10 +207,10 @@ LOOP_BLOCK(Q+3) \
 //                    whichBuffer = 1-whichBuffer;
 //                    threadgroup_barrier(mem_flags::mem_threadgroup);
 //                }
-//
-//                // Add any interacting atoms to the buffer.
-//
-//                neighborsInBuffer += atomCountBuffer[warpStart+TILE_SIZE-1].y;
+
+                // Add any interacting atoms to the buffer.
+
+                neighborsInBuffer += atomCountBuffer[warpStart+TILE_SIZE-1].y;
             }
         }
         return_neighborsInBuffer[0] = neighborsInBuffer;
