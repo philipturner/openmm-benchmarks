@@ -14,7 +14,7 @@ constant float PADDED_CUTOFF_SQUARED = 1;
 
 // 1536 threads/core is fastest
 // threadgroupSize = 256 is fastest
-// With these parameters, based config gets 25573 us (M1 Max).
+// With these parameters, base config gets 25573 us (M1 Max).
 // With matrix multiplication instead: 26322 us.
 // With matrix multiplication + half precision: 26563 us.
 // With matrix multiplication + half precision + SIMD broadcast: 40780 us.
