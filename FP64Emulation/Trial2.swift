@@ -9,11 +9,20 @@ import Foundation
 import simd
 
 // There is no tractable way to manually bypass Metal fast math. When
-// implementing the shader, just disable the build option.
-
+// compiling any shaders, explicitly set `-ffast-math` (Metal) or refrain from
+// entering `-cl-no-signed-zeroes` (OpenCL).
+//
 // When integrating into OpenMM, we also need to define IEEE-compliant FP64
 // emulation. As an internal optimization, we encode/decode to double-single
-// and perform arithmetic in that format.
+// and perform arithmetic in that format. The IEEE-compliant alternative should
+// work directly with exponents and mantissas, which is faster than encoding
+// and decoding (at least for '+' and '*'). For transcendentals, it's faster
+// to just pay the cost of encoding/decoding.
+//
+// All of these ideas are features that libMetalFloat64 promises to provide, so
+// I probably need to finish that library before incorporating FP64 into OpenMM.
+// The header also incorporates stuff like definitions of double-precision
+// vectors (and element swizzles), which are needed to avoid source breakage.
 
 struct DoubleSingle {
   var hi: Float
@@ -104,6 +113,13 @@ extension DoubleSingle {
     return lhs + rhs.negated()
   }
 }
+
+print("\nTest format:")
+print("INPUT LHS")
+print("INPUT RHS")
+print("OUTPUT FP32")
+print("OUTPUT eFP64")
+print("OUTPUT FP64")
 
 print("\nTest DoubleSingle.+")
 do {
@@ -205,6 +221,15 @@ extension DoubleSingle {
     let q: DoubleSingle = yn + prod
     self = q
   }
+  
+  func reciprocal() -> DoubleSingle {
+    let xn: Float = simd.recip(self.hi)
+    let ayn: DoubleSingle = self * xn
+    let diff: Float = (1 - ayn).hi
+    let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    let q: DoubleSingle = xn + prod
+    return q
+  }
 }
 
 print("\nTesting Double./")
@@ -246,4 +271,112 @@ do {
   print(1 / Double(1.23456789))
 }
 
-// next, test recip
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(9.87654321)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float(9.87654321))
+  print(ds3.value)
+  print(1 / Double(9.87654321))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(1.23456789)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float(1.23456789))
+  print(ds3.value)
+  print(1 / Double(1.23456789))
+}
+
+extension DoubleSingle {
+  func squareRoot() -> DoubleSingle {
+    let xn: Float = rsqrt(self.hi)
+    let yn: Float = self.hi * xn
+    let ynsqr: DoubleSingle = .init(multiplying: yn, with: yn)
+    let diff: Float = (self - ynsqr).hi
+    let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    return yn + prod.halved()
+  }
+  
+  func reciprocalSquareRoot() -> DoubleSingle {
+    let xn: Float = rsqrt(self.hi)
+    let xn2: DoubleSingle = .init(multiplying: xn, with: xn)
+    let y2n: DoubleSingle = self * xn2
+    let diff: Float = (1 - y2n).hi
+    let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    return xn + prod.halved()
+  }
+}
+
+print("\nTesting Double.squareRoot")
+do {
+  let ds = DoubleSingle(9.87654321)
+  print(ds.value)
+
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(9.87654321)))
+  print(dsr.value)
+  print(sqrt(Double(9.87654321)))
+}
+
+print("\nTesting Double.squareRoot")
+do {
+  let ds = DoubleSingle(1.23456789)
+  print(ds.value)
+
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(1.23456789)))
+  print(dsr.value)
+  print(sqrt(Double(1.23456789)))
+}
+
+print("\nTesting Double.squareRoot")
+do {
+  let constant: Double = 3.23456789
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(constant)))
+  print(dsr.value)
+  print(sqrt(Double(constant)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let ds = DoubleSingle(9.87654321)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(9.87654321)))
+  print(dsr.value)
+  print(rsqrt(Double(9.87654321)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let ds = DoubleSingle(1.23456789)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(1.23456789)))
+  print(dsr.value)
+  print(rsqrt(Double(1.23456789)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let constant: Double = 3.23456789
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(constant)))
+  print(dsr.value)
+  print(rsqrt(Double(constant)))
+}
