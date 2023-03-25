@@ -11,6 +11,10 @@ import simd
 // There is no tractable way to manually bypass Metal fast math. When
 // implementing the shader, just disable the build option.
 
+// When integrating into OpenMM, we also need to define IEEE-compliant FP64
+// emulation. As an internal optimization, we encode/decode to double-single
+// and perform arithmetic in that format.
+
 struct DoubleSingle {
   var hi: Float
   var lo: Float
