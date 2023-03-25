@@ -8,22 +8,6 @@
 import Foundation
 import simd
 
-// There is no tractable way to manually bypass Metal fast math. When
-// compiling any shaders, explicitly set `-ffast-math` (Metal) or refrain from
-// entering `-cl-no-signed-zeroes` (OpenCL).
-//
-// When integrating into OpenMM, we also need to define IEEE-compliant FP64
-// emulation. As an internal optimization, we encode/decode to double-single
-// and perform arithmetic in that format. The IEEE-compliant alternative should
-// work directly with exponents and mantissas, which is faster than encoding
-// and decoding (at least for '+' and '*'). For transcendentals, it's faster
-// to just pay the cost of encoding/decoding.
-//
-// All of these ideas are features that libMetalFloat64 promises to provide, so
-// I probably need to finish that library before incorporating FP64 into OpenMM.
-// The header also incorporates stuff like definitions of double-precision
-// vectors (and element swizzles), which are needed to avoid source breakage.
-
 struct DoubleSingle {
   var hi: Float
   var lo: Float
