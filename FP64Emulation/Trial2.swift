@@ -207,7 +207,7 @@ extension DoubleSingle {
   }
   
   func reciprocal() -> DoubleSingle {
-    let xn: Float = simd.recip(self.hi)
+    let xn: Float = recip(self.hi)
     let ayn: DoubleSingle = self * xn
     let diff: Float = (1 - ayn).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
