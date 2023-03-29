@@ -680,3 +680,203 @@ do {
   print(dsr.value)
   print(rsqrt(Double(constant)))
 }
+
+extension DoubleSingle {
+  init(_ value: Int64) {
+    self.hi = Float(value)
+    
+    // If you can guarantee this never happens, it will improve performance.
+    if abs(self.hi) >= Float(Int64.max) {
+      self.lo = 0
+    } else {
+      self.lo = Float(value - Int64(hi))
+    }
+  }
+  
+  init(_ value: UInt64) {
+    // If you can guarantee this never happens, it will improve performance.
+    if value & (2 << 63) != 0 {
+      self.hi = Float(value)
+      if Int64(self.hi) > value {
+        self.lo = Float(Int64(value) - Int64(hi))
+      } else {
+        self.lo = Float(value - UInt64(hi))
+      }
+    } else {
+      self.hi = Float(value)
+      
+      // If you can guarantee this never happens, it will improve performance.
+      if abs(self.hi) >= Float(UInt64.max) {
+        self.lo = 0
+      } else {
+        self.lo = Float(Int64(value) - Int64(hi))
+      }
+    }
+  }
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = 987654321
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = -987654321
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = .max
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = .max / 4
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = .max - 5
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = .min
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = .min / 4
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: Int64)")
+do {
+  let constant: Int64 = .min + 5
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = 987654321
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = .max
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = .max / 4
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = .max - 5
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = .min
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = .min / 4
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
+print("\nTesting Double.init(_: UInt64)")
+do {
+  let constant: UInt64 = .min + 5
+  print(constant)
+  
+  let ds = DoubleSingle(constant)
+  print(Float(constant))
+  print(ds.value)
+  print(Double(constant))
+}
+
