@@ -63,6 +63,12 @@ struct DoubleSingle {
   }
 }
 
+// Experimental, faster versions of each function.
+infix operator ++: AdditionPrecedence
+infix operator --: AdditionPrecedence
+infix operator **: MultiplicationPrecedence
+infix operator /%: MultiplicationPrecedence
+
 extension DoubleSingle {
   static func + (lhs: DoubleSingle, rhs: DoubleSingle) -> DoubleSingle {
     var s: DoubleSingle = .init(adding: lhs.hi, with: rhs.hi)
@@ -70,6 +76,13 @@ extension DoubleSingle {
     s.lo += t.hi
     s = s.normalized()
     s.lo += t.lo
+    s = s.normalized()
+    return s
+  }
+  
+  static func ++ (lhs: DoubleSingle, rhs: DoubleSingle) -> DoubleSingle {
+    var s: DoubleSingle = .init(adding: lhs.hi, with: rhs.hi)
+    s.lo += lhs.lo + rhs.lo
     s = s.normalized()
     return s
   }
@@ -87,6 +100,10 @@ extension DoubleSingle {
   
   static func - (lhs: DoubleSingle, rhs: DoubleSingle) -> DoubleSingle {
     return lhs + rhs.negated()
+  }
+  
+  static func -- (lhs: DoubleSingle, rhs: DoubleSingle) -> DoubleSingle {
+    return lhs ++ rhs.negated()
   }
   
   static func - (lhs: DoubleSingle, rhs: Float) -> DoubleSingle {
@@ -112,8 +129,10 @@ do {
   print(ds1.value)
   print(ds2.value)
   
+  let ds4 = ds1 ++ ds2
   let ds3 = ds1 + ds2
   print(Float(1.23456789) + Float(9.87654321))
+  print(ds4.value)
   print(ds3.value)
   print(Double(1.23456789) + Double(9.87654321))
 }
@@ -125,8 +144,10 @@ do {
   print(ds1.value)
   print(ds2.value)
   
+  let ds4 = ds1 -- ds2
   let ds3 = ds1 - ds2
   print(Float(1.23456789) - Float(9.87654321))
+  print(ds4.value)
   print(ds3.value)
   print(Double(1.23456789) - Double(9.87654321))
 }
@@ -173,6 +194,22 @@ extension DoubleSingle {
     let diff: Float = (lhs - ayn).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
     let q: DoubleSingle = yn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
+    return q
+  }
+  
+  static func /% (lhs: DoubleSingle, rhs: DoubleSingle) -> DoubleSingle {
+    let xn: Float = recip(rhs.hi)
+    let yn: Float = lhs.hi * xn
+    let ayn: DoubleSingle = rhs * yn
+    let diff: Float = (lhs -- ayn).hi
+    let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    let q: DoubleSingle = yn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
     return q
   }
   
@@ -183,6 +220,22 @@ extension DoubleSingle {
     let diff: Float = (lhs - ayn).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
     let q: DoubleSingle = yn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
+    return q
+  }
+  
+  static func /% (lhs: DoubleSingle, rhs: Float) -> DoubleSingle {
+    let xn: Float = recip(rhs)
+    let yn: Float = lhs.hi * xn
+    let ayn: DoubleSingle = .init(multiplying: rhs, with: yn)
+    let diff: Float = (lhs -- ayn).hi
+    let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    let q: DoubleSingle = yn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
     return q
   }
   
@@ -193,6 +246,9 @@ extension DoubleSingle {
     let diff: Float = (lhs - ayn).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
     let q: DoubleSingle = yn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
     return q
   }
   
@@ -203,15 +259,21 @@ extension DoubleSingle {
     let diff: Float = (lhs - ayn).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
     let q: DoubleSingle = yn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
     self = q
   }
   
   func reciprocal() -> DoubleSingle {
-    let xn: Float = recip(self.hi)
+    let xn: Float = simd.recip(self.hi)
     let ayn: DoubleSingle = self * xn
     let diff: Float = (1 - ayn).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
     let q: DoubleSingle = xn + prod
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
     return q
   }
 }
@@ -223,8 +285,10 @@ do {
   print(ds1.value)
   print(ds2.value)
   
+  let ds4 = ds1 /% ds2
   let ds3 = ds1 / ds2
   print(1 / Float(9.87654321))
+  print(ds4.value)
   print(ds3.value)
   print(1 / Double(9.87654321))
 }
@@ -236,10 +300,57 @@ do {
   print(ds1.value)
   print(ds2.value)
   
+  let ds4 = ds1 /% ds2
   let ds3 = ds1 / ds2
   print(Float(9.87654321) / Float(1.23456789))
+  print(ds4.value)
   print(ds3.value)
   print(Double(9.87654321) / Double(1.23456789))
+}
+
+print("\nTesting Double./")
+do {
+  let ds1 = DoubleSingle(1.23456789)
+  let ds2 = DoubleSingle(-9.87654321)
+  print(ds1.value)
+  print(ds2.value)
+  
+  let ds4 = ds1 /% ds2
+  let ds3 = ds1 / ds2
+  print(Float(1.23456789) / Float(-9.87654321))
+  print(ds4.value)
+  print(ds3.value)
+  print(Double(1.23456789) / Double(-9.87654321))
+}
+
+print("\nTesting Double./")
+do {
+  let ds1 = DoubleSingle(-1.23456789)
+  let ds2 = DoubleSingle(-9.87654321)
+  print(ds1.value)
+  print(ds2.value)
+  
+  let ds4 = ds1 /% ds2
+  let ds3 = ds1 / ds2
+  print(Float(-1.23456789) / Float(-9.87654321))
+  print(ds4.value)
+  print(ds3.value)
+  print(Double(-1.23456789) / Double(-9.87654321))
+}
+
+print("\nTesting Double./")
+do {
+  let ds1 = DoubleSingle(-1.23456789)
+  let ds2 = DoubleSingle(9.87654321)
+  print(ds1.value)
+  print(ds2.value)
+  
+  let ds4 = ds1 /% ds2
+  let ds3 = ds1 / ds2
+  print(Float(-1.23456789) / Float(9.87654321))
+  print(ds4.value)
+  print(ds3.value)
+  print(Double(-1.23456789) / Double(9.87654321))
 }
 
 print("\nTesting Double./")
@@ -249,8 +360,10 @@ do {
   print(ds1.value)
   print(ds2.value)
   
+  let ds4 = ds1 /% ds2
   let ds3 = ds1 / ds2
   print(1 / Float(1.23456789))
+  print(ds4.value)
   print(ds3.value)
   print(1 / Double(1.23456789))
 }
@@ -269,6 +382,72 @@ do {
 print("\nTesting Double.reciprocal")
 do {
   let ds2 = DoubleSingle(1.23456789)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float(1.23456789))
+  print(ds3.value)
+  print(1 / Double(1.23456789))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(-1.23456789)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float(-1.23456789))
+  print(ds3.value)
+  print(1 / Double(-1.23456789))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(Float(0))
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float(0))
+  print(ds3.value)
+  print(1 / Double(0))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(Float.leastNormalMagnitude)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float.leastNormalMagnitude)
+  print(ds3.value)
+  print(1 / Double(Float.leastNormalMagnitude))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(Float.greatestFiniteMagnitude)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float.greatestFiniteMagnitude)
+  print(ds3.value)
+  print(1 / Double(Float.greatestFiniteMagnitude))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(Float.infinity)
+  print(ds2.value)
+  
+  let ds3 = ds2.reciprocal()
+  print(1 / Float.infinity)
+  print(ds3.value)
+  print(1 / Double(Float.infinity))
+}
+
+print("\nTesting Double.reciprocal")
+do {
+  let ds2 = DoubleSingle(Float.leastNormalMagnitude)
   print(ds2.value)
   
   let ds3 = ds2.reciprocal()
@@ -284,7 +463,30 @@ extension DoubleSingle {
     let ynsqr: DoubleSingle = .init(multiplying: yn, with: yn)
     let diff: Float = (self - ynsqr).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
-    return yn + prod.halved()
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
+    var output = yn + prod.halved()
+    if self.hi == 0 {
+      output = DoubleSingle(hi: 0, lo: 0)
+    }
+    return output
+  }
+  
+  func squareRoot2() -> DoubleSingle {
+    let xn: Float = rsqrt(self.hi)
+    let yn: Float = self.hi * xn
+    let ynsqr: DoubleSingle = .init(multiplying: yn, with: yn)
+    let diff: Float = (self -- ynsqr).hi
+    let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
+    var output = yn + prod.halved()
+    if self.hi == 0 {
+      output = DoubleSingle(hi: 0, lo: 0)
+    }
+    return output
   }
   
   func reciprocalSquareRoot() -> DoubleSingle {
@@ -293,6 +495,9 @@ extension DoubleSingle {
     let y2n: DoubleSingle = self * xn2
     let diff: Float = (1 - y2n).hi
     let prod: DoubleSingle = .init(multiplying: xn, with: diff)
+    
+    // Don't handle infinity case because any `INF` will cause undefined
+    // behavior in other code anyway.
     return xn + prod.halved()
   }
 }
@@ -302,8 +507,10 @@ do {
   let ds = DoubleSingle(9.87654321)
   print(ds.value)
 
+  let dsr2 = ds.squareRoot2()
   let dsr = ds.squareRoot()
   print(sqrt(Float(9.87654321)))
+  print(dsr2.value)
   print(dsr.value)
   print(sqrt(Double(9.87654321)))
 }
@@ -313,8 +520,10 @@ do {
   let ds = DoubleSingle(1.23456789)
   print(ds.value)
 
+  let dsr2 = ds.squareRoot2()
   let dsr = ds.squareRoot()
   print(sqrt(Float(1.23456789)))
+  print(dsr2.value)
   print(dsr.value)
   print(sqrt(Double(1.23456789)))
 }
@@ -325,11 +534,70 @@ do {
   let ds = DoubleSingle(constant)
   print(ds.value)
 
+  let dsr2 = ds.squareRoot2()
   let dsr = ds.squareRoot()
   print(sqrt(Float(constant)))
+  print(dsr2.value)
   print(dsr.value)
   print(sqrt(Double(constant)))
 }
+
+print("\nTesting Double.squareRoot")
+do {
+  let constant: Double = 0
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr2 = ds.squareRoot2()
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(constant)))
+  print(dsr2.value)
+  print(dsr.value)
+  print(sqrt(Double(constant)))
+}
+
+print("\nTesting Double.squareRoot")
+do {
+  let constant: Double = .init(Float.leastNormalMagnitude)
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr2 = ds.squareRoot2()
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(constant)))
+  print(dsr2.value)
+  print(dsr.value)
+  print(sqrt(Double(constant)))
+}
+
+print("\nTesting Double.squareRoot")
+do {
+  let constant: Double = .init(Float.greatestFiniteMagnitude)
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr2 = ds.squareRoot2()
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(constant)))
+  print(dsr2.value)
+  print(dsr.value)
+  print(sqrt(Double(constant)))
+}
+
+print("\nTesting Double.squareRoot")
+do {
+  let constant: Double = .infinity
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr2 = ds.squareRoot2()
+  let dsr = ds.squareRoot()
+  print(sqrt(Float(constant)))
+  print(dsr2.value)
+  print(dsr.value)
+  print(sqrt(Double(constant)))
+}
+
 
 print("\nTesting Double.reciprocalSquareRoot")
 do {
@@ -356,6 +624,54 @@ do {
 print("\nTesting Double.reciprocalSquareRoot")
 do {
   let constant: Double = 3.23456789
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(constant)))
+  print(dsr.value)
+  print(rsqrt(Double(constant)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let constant: Double = 0.00
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(constant)))
+  print(dsr.value)
+  print(rsqrt(Double(constant)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let constant: Double = .init(Float.leastNormalMagnitude)
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(constant)))
+  print(dsr.value)
+  print(rsqrt(Double(constant)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let constant: Double = .init(Float.greatestFiniteMagnitude)
+  let ds = DoubleSingle(constant)
+  print(ds.value)
+
+  let dsr = ds.reciprocalSquareRoot()
+  print(rsqrt(Float(constant)))
+  print(dsr.value)
+  print(rsqrt(Double(constant)))
+}
+
+print("\nTesting Double.reciprocalSquareRoot")
+do {
+  let constant: Double = .infinity
   let ds = DoubleSingle(constant)
   print(ds.value)
 
